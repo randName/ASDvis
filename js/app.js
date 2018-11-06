@@ -36,6 +36,7 @@ function process(data, seed=1) {
         groups[t][k] = [p.id]
       }
     })
+    p.pathed = 0
     p.width = svg.append('text').attr('class', 'temp')
       .text(p.nick).node().getComputedTextLength() + 10
     people[p.id] = p
@@ -66,7 +67,19 @@ function createChart(scenes) {
     .layout()
 
   let transf = (d) => `translate(${d.x},${d.y})`
-  let stroke = (s) => (d) => d3.selectAll(`[p='${d.character.id}']`).style('stroke-opacity', s)
+  let pather = (s) => (d) => {
+    let c = d.character
+    if (s === null) {
+      c.pathed = (c.pathed === 2) ? 0 : 2
+    } else if ( c.pathed !== 2 ){
+      c.pathed = s
+    }
+    let t = c.pathed
+    d3.selectAll(`[p='${c.id}']`).style('stroke-opacity', t ? 1 : 0.2)
+    d3.selectAll(`[sp='${c.id}']`)
+      .style('fill', t ? '#666' : '#fff')
+      .attr('r', t ? 3 : 2)
+  }
 
   let drag = d3.behavior.drag().on('drag', function (d) {
     d.x += d3.event.dx
@@ -84,25 +97,28 @@ function createChart(scenes) {
     .attr('to',(d) => d.target.scene.id)
     .attr('from', (d) => d.source.scene ? d.source.scene.id : d.character.id)
     .style('stroke-opacity', 0.2)
-    .on('mouseout', stroke(0.2))
-    .on('mouseover', stroke(1))
+    .on('click', pather(null))
+    .on('mouseout', pather(0))
+    .on('mouseover', pather(1))
 
   svg.selectAll('.scene').data(narrative.scenes()).enter().call((s) => {
     let g = s.append('g').call(drag).attr('transform', transf)
+      .attr('class', 'scene')
+
+    g.append('title').text((d) => d.id)
 
     g.append('rect')
       .attr('width', 20).attr('height', (d) => d.height)
       .attr('x', -10).attr('y', 0)
       .attr('rx', 3).attr('ry', 3)
-
-    g.append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('text-anchor', 'middle')
-      .attr('x', (d) => -d.height/2)
-      .attr('y', (d) => d.width/2 + 5)
-      .style('font-size', 12)
-      .text((d) => d.id)
   })
+
+  svg.selectAll('.scene').selectAll('.appearance').data((d) => d.appearances).enter()
+    .append('circle')
+    .attr('cx', (d) => d.x).attr('cy', (d) => d.y)
+    .attr('sp', (d) => d.character.id)
+    .style('fill', '#fff')
+    .attr('r', 2)
 
   svg.selectAll('.intro').data(narrative.introductions()).enter().append('text')
     .attr('transform', transf)
