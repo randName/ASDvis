@@ -4,13 +4,15 @@
     <meta charset="utf-8">
     <style>
         text { font-family: Gotham,Helvetica,sans-serif; font-size: 8px; }
-        path { fill: none; stroke-width: 2; stroke: #000; }
         rect { fill: #fff; fill-opacity: 0.7; stroke: #000; }
+        path { fill: none; stroke-width: 2; stroke: #000; }
+        #but { top: 1%; right: 1%; position: absolute; }
     </style>
 	<script src="js/d3.v3.min.js"></script>
 	<script src="js/narrative.js"></script>
   <head>
   <body>
-	<script src="js/app.js"></script>
+    <button id="but" onclick="reload()">shuffle</button>
+    <script src="js/app.js"></script>
   </body>
 </html>

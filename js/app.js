@@ -7,8 +7,23 @@ let data = []
 
 d3.csv('data.csv', (r) => {
   data = r
-  createChart(process(r))
+  createChart(process(r, seed=getSeed()))
 })
+
+window.onhashchange = () => {
+  createChart(process(data, getSeed()))
+}
+
+function reload() {
+  window.location.hash = Math.round(Math.random() * 10000)
+}
+
+function getSeed() {
+  if (window.location.hash) {
+    return parseInt(window.location.hash.split('#')[1])
+  }
+  return 1
+}
 
 function seededrandom (seed = 123456) {
   seed = seed % 2147483647
@@ -23,6 +38,7 @@ function process(data, seed=1) {
   let people = {}, groups = {}
 
   let random = seededrandom(seed)
+  let rand = () => random() - 0.5
 
   times.forEach((t) => { groups[t] = {} })
 
@@ -46,10 +62,9 @@ function process(data, seed=1) {
 
   let scenes = [{
     id: 'freshmore',
-    characters: Object.values(people).sort((a, b) => a.f - b.f)
+    characters: Object.values(people).sort(rand).sort((a, b) => a.f - b.f)
   }]
 
-  let rand = () => random() - 0.5
   times.forEach((t) => scenes.push(
     ...Object.keys(groups[t]).map((k) => ({
       id: `${t}-${k}`.toUpperCase(),
