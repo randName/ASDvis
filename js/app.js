@@ -116,9 +116,61 @@ function createChart(scenes) {
     drawLinks(d.id)
   })
 
+  let dragLink = d3.behavior.drag().on('drag', function (d) {
+    let e = d3.event, ic = d.character.introduction
+    let dist = [Math.hypot(ic.x - e.x, ic.y - e.y), null]
+
+    scenes.forEach((s) => {
+      let i = null
+      if (d.source.scene && d.source.scene.id == s.id) {
+        i = 0
+      } else if (d.target.scene && d.target.scene.id == s.id) {
+        i = 1
+      }
+      if (i !== null) {
+        dist[i] = Math.hypot(s.x - e.x, s.y - e.y)
+      }
+    })
+
+    let change = null
+    if (dist[0] < dist[1] && dist[0] < 50) {
+      change = 'source'
+    } else if (dist[1] < dist[0] && dist[1] < 50) {
+      change = 'target'
+    }
+    if (!change) return
+
+    let apps = (d[change].scene || scenes[0]).appearances, ci = null, dir = 0
+    apps.forEach((a, i) => { if (a.character.id == d.character.id) ci = i })
+
+    if (e.dy > 0 && ci != apps.length - 1) {
+      dir = 1
+    } else if (e.dy < 0 && ci != 0) {
+      dir = -1
+    }
+    if (!dir) return
+
+    [apps[ci].y, apps[ci + dir].y] = [apps[ci + dir].y, apps[ci].y]
+    let sorty = (a, b) => a.y - b.y
+    apps.sort(sorty)
+
+    if (d[change].scene) {
+      drawLinks(d[change].scene.id)
+    } else {
+      ic = narrative.introductions()
+      let oy = ic[ci].y, ny = ic[ci + dir].y
+      ic[ci].y = ny
+      ic[ci + dir].y = oy
+      ic.sort(sorty)
+      d3.selectAll('.intro').attr('transform', transf)
+      drawLinks('freshmore')
+    }
+  })
+
   d3.selectAll('svg > *').remove()
 
   svg.selectAll('.link').data(narrative.links()).enter().append('path')
+    .attr('class', 'link')
     .attr('d', narrative.link())
     .attr('p', (d) => d.character.id)
     .attr('to',(d) => d.target.scene.id)
@@ -128,6 +180,7 @@ function createChart(scenes) {
     .on('click', pather(null))
     .on('mouseout', pather(0))
     .on('mouseover', pather(1))
+    .call(dragLink)
 
   svg.selectAll('.scene').data(narrative.scenes()).enter().call((s) => {
     let g = s.append('g')
@@ -150,6 +203,7 @@ function createChart(scenes) {
   })
 
   svg.selectAll('.intro').data(narrative.introductions()).enter().append('text')
+    .attr('class', 'intro')
     .attr('transform', transf)
     .attr('y', 2).attr('x', -4)
     .attr('text-anchor', 'end')
