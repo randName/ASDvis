@@ -99,6 +99,9 @@ function createChart(scenes) {
     d3.selectAll(`[p='${c.id}']`)
       .style('stroke-width', t ? 2 : 1)
       .style('stroke-opacity', t ? 1 : 0.2)
+    d3.selectAll(`[sp='${c.id}']`)
+      .style('fill', t ? '#666' : '#fff')
+      .attr('r', t ? 3 : 2)
     scenes.forEach((k) => {
       t = k.characters.some((p) => p.pathed)
       d3.selectAll(`[s='${k.id}']`)
@@ -153,6 +156,7 @@ function createChart(scenes) {
     [apps[ci].y, apps[ci + dir].y] = [apps[ci + dir].y, apps[ci].y]
     let sorty = (a, b) => a.y - b.y
     apps.sort(sorty)
+    d3.selectAll('.appearance').attr('cy', (d) => d.y)
 
     if (d[change].scene) {
       drawLinks(d[change].scene.id)
@@ -201,6 +205,15 @@ function createChart(scenes) {
       .style('stroke-width', 0.5)
       .style('fill-opacity', 0.7)
   })
+
+  svg.selectAll('.scene').selectAll('.appearance').data((d) => d.appearances).enter()
+    .append('circle')
+    .attr('class', 'appearance')
+    .attr('sp', (d) => d.character.id)
+    .attr('cy', (d) => d.y)
+    .attr('cx', 0)
+    .attr('r', 2)
+    .style('fill', '#fff')
 
   svg.selectAll('.intro').data(narrative.introductions()).enter().append('text')
     .attr('class', 'intro')
