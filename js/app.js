@@ -4,9 +4,9 @@ const svg = d3.select('body').append('svg')
   .attr('width', size[0]).attr('height', size[1])
 
 const terms = [4, 5, 6, 7, 8]
+const intoObject = (o, k) => ({...o, [k]: {}})
 
-let sections = {}
-terms.forEach((t) => { sections[t] = {} })
+const sections = terms.reduce(intoObject, {})
 d3.csv('sections.csv', (r) => r.forEach((n) => {
   terms.filter((t) => n[t]).forEach((t) => { sections[t][n.n] = n[t] })
 }))
@@ -42,41 +42,37 @@ function seededrandom (seed = 123456) {
 }
 
 function process(data, seed=1) {
-  let people = {}, groups = {}
+  const random = seededrandom(seed)
+  const rand = () => random() - 0.5
 
-  let random = seededrandom(seed)
-  let rand = () => random() - 0.5
-
-  terms.forEach((t) => { groups[t] = {} })
-
-  data.forEach((p) => {
+  const groups = terms.reduce(intoObject, {})
+  const people = data.reduce((o, p) => {
     p.id = parseInt(p.id)
     terms.forEach((t) => {
-      let k = p[t]
+      const k = p[t]
       if (k == '-') return
-      if (k in groups[t]) {
-        groups[t][k].push(p.id)
-      } else {
-        groups[t][k] = [p.id]
-      }
+      if (!(k in groups[t])) { groups[t][k] = [] }
+      groups[t][k].push(p.id)
     })
-    p.pathed = 0
-    people[p.id] = p
-  })
+    return {
+      ...o,
+      [p.id]: {...p, pathed: 0}
+    }
+  }, {})
 
-  let scenes = [{
-    id: 'freshmore',
-    characters: Object.values(people).sort(rand).sort((a, b) => a.f - b.f)
-  }]
-
-  terms.forEach((term) => scenes.push(
-    ...Object.keys(groups[term]).map((section) => ({
+  const scenes = [].concat(...terms.map((term) =>
+    Object.keys(groups[term]).map((section) => ({
       term, section,
       id: `T${term}-S${section}`,
       name: sections[term][section],
       characters: groups[term][section].map((i) => people[i]).sort(rand)
     })).sort(rand)
   ))
+
+  scenes.unshift({
+    id: 'freshmore',
+    characters: Object.values(people).sort(rand).sort((a, b) => a.f - b.f)
+  })
 
   return scenes
 }
@@ -87,15 +83,15 @@ function createChart(scenes) {
     .labelSize([50, label]).labelPosition('left')
     .layout()
 
-  let transf = (d) => `translate(${Math.round(d.x)},${Math.round(d.y)})`
-  let pather = (s) => (d) => {
-    let c = d.character
+  const transf = (d) => `translate(${Math.round(d.x)},${Math.round(d.y)})`
+  const pather = (s) => (d) => {
+    const c = d.character
     if (s === null) {
       c.pathed = (c.pathed === 2) ? 0 : 2
     } else if ( c.pathed !== 2 ){
       c.pathed = s
     }
-    let t = c.pathed
+    const t = c.pathed
     d3.selectAll(`[p='${c.id}']`)
       .style('stroke-width', t ? 2 : 1)
       .style('stroke-opacity', t ? 1 : 0.2)
@@ -103,72 +99,57 @@ function createChart(scenes) {
       .style('fill', t ? '#666' : '#fff')
       .attr('r', t ? 3 : 2)
     scenes.forEach((k) => {
-      t = k.characters.some((p) => p.pathed)
+      const h = k.characters.some((p) => p.pathed)
       d3.selectAll(`[s='${k.id}']`)
-        .style('fill-opacity', t ? 1 : 0.7)
-        .style('stroke-width', t ? 2 : 0.5)
+        .style('fill-opacity', h ? 1 : 0.7)
+        .style('stroke-width', h ? 2 : 0.5)
     })
   }
 
-  let drawLinks = (i) => d3.selectAll(`[to='${i}'],[from='${i}']`).attr('d', narrative.link())
+  const drawLinks = (i) => d3.selectAll(`[to='${i}'],[from='${i}']`).attr('d', narrative.link())
 
-  let dragScene = d3.behavior.drag().on('drag', function (d) {
+  const dragScene = d3.behavior.drag().on('drag', function (d) {
     d.x += d3.event.dx
     d.y += d3.event.dy
     d3.select(this).attr('transform', transf)
     drawLinks(d.id)
   })
 
-  let dragLink = d3.behavior.drag().on('drag', function (d) {
-    let e = d3.event, ic = d.character.introduction
-    let dist = [Math.hypot(ic.x - e.x, ic.y - e.y), null]
+  const dragLink = d3.behavior.drag().on('drag', function (d) {
+    const e = d3.event
+    const st = ['source', 'target']
+    const sorty = (a, b) => a.y - b.y
+    const dist = (p) => Math.hypot(p.x - e.x, p.y - e.y)
+    const l = scenes.reduce((a, s) => {
+      const i = st.reduce((v, k, i) => (d[k].scene && d[k].scene.id == s.id) ? i : v, null)
+      if (i !== null) { a[i] = dist(s) }
+      return a
+    }, [dist(d.character.introduction), null])
 
-    scenes.forEach((s) => {
-      let i = null
-      if (d.source.scene && d.source.scene.id == s.id) {
-        i = 0
-      } else if (d.target.scene && d.target.scene.id == s.id) {
-        i = 1
-      }
-      if (i !== null) {
-        dist[i] = Math.hypot(s.x - e.x, s.y - e.y)
-      }
-    })
+    const change = d[st.reduce((v, k, i) => (l[i] < l[1-i] && l[i] < 50) ? k : v, null)]
+    if (change === undefined) return
 
-    let change = null
-    if (dist[0] < dist[1] && dist[0] < 50) {
-      change = 'source'
-    } else if (dist[1] < dist[0] && dist[1] < 50) {
-      change = 'target'
-    }
-    if (!change) return
+    const apps = (change.scene || scenes[0]).appearances
+    const ci = apps.reduce((v, a, i) => a.character.id === d.character.id ? i : v, null)
+    const ni = ci + Math.sign(e.dy)
+    if (apps[ni] === undefined) return
 
-    let apps = (d[change].scene || scenes[0]).appearances, ci = null, dir = 0
-    apps.forEach((a, i) => { if (a.character.id == d.character.id) ci = i })
-
-    if (e.dy > 0 && ci != apps.length - 1) {
-      dir = 1
-    } else if (e.dy < 0 && ci != 0) {
-      dir = -1
-    }
-    if (!dir) return
-
-    [apps[ci].y, apps[ci + dir].y] = [apps[ci + dir].y, apps[ci].y]
-    let sorty = (a, b) => a.y - b.y
+    [apps[ci].y, apps[ni].y] = [apps[ni].y, apps[ci].y]
     apps.sort(sorty)
     d3.selectAll('.appearance').attr('cy', (d) => d.y)
 
-    if (d[change].scene) {
-      drawLinks(d[change].scene.id)
-    } else {
-      ic = narrative.introductions()
-      let oy = ic[ci].y, ny = ic[ci + dir].y
-      ic[ci].y = ny
-      ic[ci + dir].y = oy
-      ic.sort(sorty)
-      d3.selectAll('.intro').attr('transform', transf)
-      drawLinks('freshmore')
+    if (change.scene) {
+      drawLinks(change.scene.id)
+      return
     }
+
+    const intros = narrative.introductions()
+    const oy = intros[ci].y
+    intros[ci].y = intros[ni].y
+    intros[ni].y = oy
+    intros.sort(sorty)
+    d3.selectAll('.intro').attr('transform', transf)
+    drawLinks('freshmore')
   })
 
   d3.selectAll('svg > *').remove()
@@ -187,7 +168,7 @@ function createChart(scenes) {
     .call(dragLink)
 
   svg.selectAll('.scene').data(narrative.scenes()).enter().call((s) => {
-    let g = s.append('g')
+    const g = s.append('g')
       .call(dragScene)
       .attr('class', 'scene')
       .attr('transform', transf)
