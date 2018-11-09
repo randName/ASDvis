@@ -8,14 +8,11 @@ const intoObject = (o, k) => ({...o, [k]: {}})
 const getCommon = (a, b) => terms.reduce((s, t) => s + (a[t] === b[t]), 0)
 
 const sections = terms.reduce(intoObject, {})
-d3.csv('sections.csv', (r) => r.forEach((n) => {
-  terms.filter((t) => n[t]).forEach((t) => { sections[t][n.n] = n[t] })
-}))
-
 let data = []
 
-d3.csv('data.csv', (r) => {
-  data = r.map((p) => ({...p, id: parseInt(p.id)}))
+Promise.all([d3.csv('sections.csv'), d3.csv('data.csv')]).then((r) => {
+  r[0].forEach((n) => terms.filter((t) => n[t]).forEach((t) => { sections[t][n.n] = n[t] }))
+  data = r[1].map((p) => ({...p, id: parseInt(p.id)}))
   createChart(process(data, getSeed()))
 })
 
@@ -84,7 +81,7 @@ function process(data, seed=1) {
 }
 
 function createChart(scenes) {
-  let narrative = d3.layout.narrative().scenes(scenes)
+  let narrative = d3.narrative().scenes(scenes)
     .size(size).pathSpace(label)
     .labelSize([50, label]).labelPosition('left')
     .layout()
@@ -114,14 +111,14 @@ function createChart(scenes) {
 
   const drawLinks = (i) => d3.selectAll(`[to='${i}'],[from='${i}']`).attr('d', narrative.link())
 
-  const dragScene = d3.behavior.drag().on('drag', function (d) {
+  const dragScene = d3.drag().on('drag', function (d) {
     d.x += d3.event.dx
     d.y += d3.event.dy
     d3.select(this).attr('transform', transf)
     drawLinks(d.id)
   })
 
-  const dragLink = d3.behavior.drag().on('drag', function (d) {
+  const dragLink = d3.drag().on('drag', function (d) {
     const e = d3.event
     const st = ['source', 'target']
     const sorty = (a, b) => a.y - b.y
