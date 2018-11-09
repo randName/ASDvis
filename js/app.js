@@ -5,6 +5,7 @@ const svg = d3.select('body').append('svg')
 
 const terms = [4, 5, 6, 7, 8]
 const intoObject = (o, k) => ({...o, [k]: {}})
+const getCommon = (a, b) => terms.reduce((s, t) => s + (a[t] === b[t]), 0)
 
 const sections = terms.reduce(intoObject, {})
 d3.csv('sections.csv', (r) => r.forEach((n) => {
@@ -14,8 +15,8 @@ d3.csv('sections.csv', (r) => r.forEach((n) => {
 let data = []
 
 d3.csv('data.csv', (r) => {
-  data = r
-  createChart(process(r, seed=getSeed()))
+  data = r.map((p) => ({...p, id: parseInt(p.id)}))
+  createChart(process(data, getSeed()))
 })
 
 window.onhashchange = () => {
@@ -47,7 +48,7 @@ function process(data, seed=1) {
 
   const groups = terms.reduce(intoObject, {})
   const people = data.reduce((o, p) => {
-    p.id = parseInt(p.id)
+    const common = data.filter((q) => p.id !== q.id).map((q) => [getCommon(p, q), q.id]).sort()
     terms.forEach((t) => {
       const k = p[t]
       if (k == '-') return
@@ -56,7 +57,12 @@ function process(data, seed=1) {
     })
     return {
       ...o,
-      [p.id]: {...p, pathed: 0}
+      [p.id]: {
+        ...p,
+        common,
+        pathed: 0,
+        mostCommon: common[common.length-1]
+      }
     }
   }, {})
 
