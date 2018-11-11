@@ -57,7 +57,7 @@ Promise.all([d3.csv('sections.csv'), d3.csv('data.csv')]).then((r) => {
       [p.id]: {
         ...p,
         common,
-        pathed: 0,
+        selected: 0,
         mostCommon: common[common.length-1]
       }
     }
@@ -110,26 +110,39 @@ function adjustChart(narrative) {
 }
 
 function initChart(narrative) {
-  const pather = (s) => (d) => {
-    const c = d.character
-    if (s === null) {
-      c.pathed = (c.pathed === 2) ? 0 : 2
-    } else if ( c.pathed !== 2 ){
-      c.pathed = s
-    }
-    const t = c.pathed
-    svg.selectAll(`[p='${c.id}']`)
-      .style('stroke-width', t ? 2 : 1)
-      .style('stroke-opacity', t ? 1 : 0.2)
-    svg.selectAll(`[sp='${c.id}']`)
-      .style('fill', t ? '#666' : '#fff')
-      .attr('r', t ? 3 : 2)
+  const showSelections = () => {
+    svg.selectAll('.link')
+      .style('stroke-width', (d) => d.character.selected ? 2 : 1)
+      .style('stroke-opacity', (d) => d.character.selected ? 1 : 0.2)
+
+    svg.selectAll('.appearance')
+      .style('fill', (d) => d.character.selected ? '#666' : '#fff')
+
     narrative.scenes.forEach((k) => {
-      const h = k.characters.some((p) => p.pathed)
+      const h = k.characters.some((p) => p.selected)
       svg.selectAll(`[s='${k.id}']`)
         .style('fill-opacity', h ? 1 : 0.7)
         .style('stroke-width', h ? 2 : 0.5)
     })
+
+    const selected = narrative.characters.filter((c) => c.selected == 2)
+    if ( selected.length === 0 ) return
+
+    const getCommon = (c) => terms.reduce((v, t) => v + selected.some((s) => s[t] === c[t]), 0)
+    const com = narrative.characters.map((c) => [getCommon(c), c.id]).sort()
+    const max = com[com.length - 1][0]
+    svg.selectAll('.link')
+      .style('stroke-opacity', (d) => com.find((i) => i[1] === d.character.id)[0] / max)
+  }
+
+  const selectLink = (s) => (d) => {
+    const c = d.character
+    if (s === 2) {
+      c.selected = (c.selected === 2) ? 0 : 2
+    } else if ( c.selected !== 2 ){
+      c.selected = s
+    }
+    showSelections()
   }
 
   const setTransf = (i) => svg.selectAll(i).attr('transform', narrative.transform())
@@ -149,11 +162,9 @@ function initChart(narrative) {
     .attr('p', (d) => d.character.id)
     .attr('to',(d) => d.target.scene.id)
     .attr('from', (d) => d.source.scene ? d.source.scene.id : d.character.id)
-    .style('stroke-opacity', 0.2)
-    .style('stroke-width', 1)
-    .on('click', pather(null))
-    .on('mouseout', pather(0))
-    .on('mouseover', pather(1))
+    .on('click', selectLink(2))
+    .on('mouseout', selectLink(0))
+    .on('mouseover', selectLink(1))
 
   svg.selectAll('.scene').data(narrative.scenes).enter().call((s) => {
     const g = s.append('g')
@@ -170,16 +181,13 @@ function initChart(narrative) {
       .attr('width', 20).attr('x', -10)
       .attr('height', (d) => d.height)
       .attr('rx', 3).attr('ry', 3)
-      .style('stroke-width', 0.5)
-      .style('fill-opacity', 0.7)
   })
 
   svg.selectAll('.scene').selectAll('.appearance').data((d) => d.appearances).enter()
     .append('circle')
     .attr('class', 'appearance')
-    .attr('sp', (d) => d.character.id)
-    .attr('r', 2)
-    .style('fill', '#fff')
+    .attr('p', (d) => d.character.id)
+    .attr('r', 3)
 
   svg.selectAll('.intro').data(narrative.introductions).enter().append('text')
     .attr('class', 'intro')
@@ -187,5 +195,6 @@ function initChart(narrative) {
     .attr('text-anchor', 'end')
     .text((d) => d.character.nick)
 
+  showSelections()
   adjustChart(narrative)
 }

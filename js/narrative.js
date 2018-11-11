@@ -5,7 +5,7 @@ class Appearance {
     this.scene = scene
     this.character = character
 
-    this.pathSpace = 10
+    this.pathSpace = 11
     this.scenePadding = [0, 0, 0, 0]
   }
 
