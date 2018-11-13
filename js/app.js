@@ -26,6 +26,7 @@ function seededrandom (seed = 123456) {
     return (seed - 1) / 2147483646
   }
 }
+
 class Person {
   constructor(person) {
     Object.assign(this, person)
@@ -45,47 +46,43 @@ class Group {
 let data
 
 Promise.all([d3.csv('sections.csv'), d3.csv('data.csv')]).then((r) => {
-  let sections = terms.reduce((o, k) => ({...o, [k]: {}}), {})
-
-  r[0].forEach((n) => terms.filter((t) => n[t]).forEach((t) => {
-    sections[t][n.n] = { name: n[t], people: [] }
-  }))
-
+  let sections = r[0]
   data = process(r[1].map((p) => ({...p, id: parseInt(p.id)})), sections)
 })
 
 function process(raw, sections) {
-  const people = raw.reduce((o, p) => {
-    terms.forEach((t) => {
-      const k = p[t]
-      if (k == '-') return
-      sections[t][k].people.push(p.id)
-    })
-    return {...o, [p.id]: new Person(p)}
-  }, {})
+  const gid = (t, s) => t === 3 ? `F0${s}` : `T${t}-S${s}`
 
-  const groups = [].concat(...terms.map(
-    (term) => Object.keys(sections[term])
-      .map((s) => parseInt(s))
-      .map((section) => new Group({
-        term, section,
-        ...sections[term][section],
-        id: term === 3 ? `F0${section}` : `T${term}-S${section}`,
-      }))
-  ))
+  const groups = [].concat(...sections.map(
+    (n) => terms.filter((t) => n[t]).map((term) => new Group({
+      id: gid(term, n.n),
+      name: n[term], people: [],
+      term, section: parseInt(n.n)
+    }))
+  )).sort((a, b) => a.term - b.term)
+
+  const people = raw.map((p) => {
+    terms.forEach((t) => {
+      const s = groups.find((g) => g.id  === gid(t, p[t]))
+      if (!s) return
+      s.people.push(p.id)
+    })
+    return new Person(p)
+  })
 
   const nodes = [].concat(...groups.map((group) => group.people.map((p) => {
-    const person = people[p], n = {
+    const person = people.find((i) => i.id === p)
+    const n = {
       group, person,
-      id: `${group.id}-${people[p].id}`
+      id: `${group.id}-${p}`
     }
-    group.nodes.push(n)
-    person.nodes.push(n)
+    ;[group, person].forEach((i) => i.nodes.push(n))
     return n
   })))
 
-  const links = [].concat(...Object.values(people).map(
-    (p) => p.nodes.slice(1).map((n, i) => ({
+  const links = [].concat(...people.map((p) => p.nodes
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .slice(1).map((n, i) => ({
       person: p.id,
       target: n.id,
       source: p.nodes[i].id
