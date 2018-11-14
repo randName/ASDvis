@@ -1,8 +1,4 @@
-const size = [window.innerWidth - 20, window.innerHeight - 30]
-const svg = d3.select('body').append('svg')
-  .attr('width', size[0])
-  .attr('height', size[1])
-
+const asd = new ASD()
 const terms = [3, 4, 5, 6, 7, 8]
 
 window.onhashchange = () => {
@@ -27,34 +23,24 @@ function seededrandom (seed = 123456) {
   }
 }
 
-class Person {
-  constructor(person) {
-    Object.assign(this, person)
+class Item {
+  constructor(item) {
+    Object.assign(this, item)
     this.nodes = []
     this.selected = 0
   }
 }
-
-class Group {
-  constructor(group) {
-    Object.assign(this, group)
-    this.nodes = []
-    this.selected = 0
-  }
-}
-
-let data
 
 Promise.all([d3.csv('sections.csv'), d3.csv('data.csv')]).then((r) => {
-  let sections = r[0]
-  data = process(r[1].map((p) => ({...p, id: parseInt(p.id)})), sections)
+  const raw = r[1].map((p) => ({...p, id: parseInt(p.id)}))
+  asd.init(Object.assign({terms}, process(raw, r[0])))
 })
 
 function process(raw, sections) {
   const gid = (t, s) => t === 3 ? `F0${s}` : `T${t}-S${s}`
 
   const groups = [].concat(...sections.map(
-    (n) => terms.filter((t) => n[t]).map((term) => new Group({
+    (n) => terms.filter((t) => n[t]).map((term) => new Item({
       id: gid(term, n.n),
       name: n[term], people: [],
       term, section: parseInt(n.n)
@@ -67,7 +53,7 @@ function process(raw, sections) {
       if (!s) return
       s.people.push(p.id)
     })
-    return new Person(p)
+    return new Item(p)
   })
 
   const nodes = [].concat(...groups.map((group) => group.people.map((p) => {
@@ -83,7 +69,7 @@ function process(raw, sections) {
   const links = [].concat(...people.map((p) => p.nodes
     .sort((a, b) => a.id.localeCompare(b.id))
     .slice(1).map((n, i) => ({
-      person: p.id,
+      person: p,
       target: n.id,
       source: p.nodes[i].id
     }))
