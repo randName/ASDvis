@@ -1,5 +1,6 @@
 function ASD() {
-  const size = [window.innerWidth, window.innerHeight - 20]
+  const size = [window.innerWidth, window.innerHeight - 75]
+  const psel = document.getElementById('people')
 
   const svg = d3.select('body').append('svg')
     .style('width', '100%')
@@ -22,6 +23,7 @@ function ASD() {
   const transform = (d) => `translate(${Math.round(d.x)},${Math.round(d.y)})`
 
   let data, sim
+  let personSelect
   let termSpace, termX
 
   const dragPos = (t, d) => {
@@ -47,6 +49,11 @@ function ASD() {
     const p = d.person
     if (s === 2) {
       p.selected = (p.selected === 2) ? 0 : 2
+      if ( p.selected === 2 ) {
+        personSelect.setChoiceByValue(''+p.id)
+      } else {
+        personSelect.removeActiveItemsByValue(''+p.id)
+      }
     } else if ( p.selected !== 2 ){
       p.selected = s
     }
@@ -86,6 +93,21 @@ function ASD() {
       .id((d) => d.group.id)
       .clusters(data.groups)
       .strength(0.3)
+
+    personSelect = new Choices(psel, {
+      placeholder: true,
+      removeItemButton: true,
+      placeholderValue: 'Search for people...',
+      choices: data.people.map((p) => ({value: ''+p.id, label: p.nick}))
+    })
+
+    personSelect.passedElement.element.addEventListener('change', (e) => {
+      data.people.forEach((p) => { p.selected = 0 })
+      personSelect.getValue(true).forEach((v) => {
+        data.people.find((p) => p.id === parseInt(v)).selected = 2
+      })
+      showSelections()
+    })
 
     layout()
     showSelections()
