@@ -1,5 +1,5 @@
 function ASD() {
-  const size = [window.innerWidth, window.innerHeight - 75]
+  const size = [window.innerWidth, window.innerHeight - 60]
   const psel = document.getElementById('people')
 
   const svg = d3.select('body').append('svg')
@@ -77,22 +77,22 @@ function ASD() {
 
     sim.force('time')
       .x(termX)
-      .strength(0.2)
+      .strength(1)
 
     sim.force('link')
       .id((d) => d.id)
       .links(data.links)
-      .distance(termSpace * 1.1)
-      .strength(1)
+      .distance(termSpace)
+      .strength(2)
 
     sim.force('charge')
       .distanceMax(size[0])
-      .strength(-90)
+      .strength(-150)
 
     sim.force('section')
       .id((d) => d.group.id)
       .clusters(data.groups)
-      .strength(0.3)
+      .strength(0.5)
 
     personSelect = new Choices(psel, {
       placeholder: true,
@@ -157,7 +157,7 @@ function ASD() {
         .style('fill', '#fff')
         .style('opacity', 0.8)
         .style('stroke', '#000')
-        .append('title').text((d) => `T${d.term}: ${d.name}`)
+        .append('title').text((d) => d.term === 3 ? `15${d.name}` : `T${d.term}: ${d.name}`)
 
     g.append('g')
       .selectAll('.node')

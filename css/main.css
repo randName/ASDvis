@@ -1,6 +1,11 @@
+body {
+    margin: 0px;
+    padding: 0px;
+}
+
 .choices {
-    width: 99%;
-    margin-bottom: 10px;
+    width: 98%;
+    margin: 5px;
 }
 
 .choices__inner {
