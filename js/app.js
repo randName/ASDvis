@@ -1,5 +1,6 @@
 const asd = new ASD()
 const terms = [3, 4, 5, 6, 7, 8]
+const sources = ['sections', 'people']
 
 window.onhashchange = () => {
 }
@@ -31,7 +32,7 @@ class Item {
   }
 }
 
-Promise.all([d3.csv('sections.csv'), d3.csv('data.csv')]).then((r) => {
+Promise.all(sources.map((s) => d3.csv(`data/${s}.csv`))).then((r) => {
   const raw = r[1].map((p) => ({...p, id: parseInt(p.id)}))
   asd.init(Object.assign({terms}, process(raw, r[0])))
 })
