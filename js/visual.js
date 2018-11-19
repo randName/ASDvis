@@ -60,6 +60,11 @@ function ASD() {
     showSelections()
   }
 
+  const selectGroup = (d) => {
+    d.selected = !d.selected
+    showSelections()
+  }
+
   const getCommon = (s, p) => data.terms.reduce((v, t) => v + s.some((q) => p[t] === q[t]), 0)
 
   function init(_) {
@@ -157,6 +162,7 @@ function ASD() {
         .style('fill', '#fff')
         .style('opacity', 0.8)
         .style('stroke', '#000')
+        .on('click', selectGroup)
         .append('title').text((d) => d.term === 3 ? `15${d.name}` : `T${d.term}: ${d.name}`)
 
     g.append('g')
@@ -172,6 +178,12 @@ function ASD() {
   }
 
   function showSelections() {
+    const selGroup = data.groups.filter((g) => g.selected)
+
+    if (selGroup.length > 0) {
+      const selPeopl = data.people.filter((p) => selGroup.every((g) => g.people.includes(p.id)))
+    }
+
     g.selectAll('.link')
       .style('stroke-width', (d) => d.person.selected ? 2 : 1)
       .style('stroke-opacity', (d) => d.person.selected ? 1 : 0.2)
